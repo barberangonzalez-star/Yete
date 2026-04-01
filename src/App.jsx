@@ -10,30 +10,25 @@ import Settings from './pages/Settings'
 import Sidebar from './components/Sidebar'
 import MobileNav from './components/MobileNav'
 
-function AppLayout() {
+function ProtectedLayout() {
   const { user } = useAuth()
   if (!user) return <Navigate to="/auth" replace />
 
   return (
     <FinanceProvider>
       <div className="flex h-screen overflow-hidden bg-surface-0">
-        {/* Desktop sidebar */}
         <div className="hidden lg:flex flex-shrink-0">
           <Sidebar />
         </div>
-
-        {/* Main content area */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Mobile top bar */}
           <MobileNav />
-
-          {/* Page content */}
           <main className="flex flex-1 overflow-hidden">
             <Routes>
               <Route path="/"         element={<Dashboard />} />
               <Route path="/gastos"   element={<Transactions />} />
               <Route path="/analisis" element={<Analytics />} />
               <Route path="/ajustes"  element={<Settings />} />
+              <Route path="*"         element={<Navigate to="/" replace />} />
             </Routes>
           </main>
         </div>
@@ -42,21 +37,21 @@ function AppLayout() {
   )
 }
 
+function AuthGuard() {
+  const { user } = useAuth()
+  if (user) return <Navigate to="/" replace />
+  return <AuthPage />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/auth" element={<AuthPageGuard />} />
-          <Route path="/*"    element={<AppLayout />} />
+          <Route path="/auth" element={<AuthGuard />} />
+          <Route path="/*"   element={<ProtectedLayout />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
   )
-}
-
-function AuthPageGuard() {
-  const { user } = useAuth()
-  if (user) return <Navigate to="/" replace />
-  return <AuthPage />
 }

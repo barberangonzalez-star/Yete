@@ -1,33 +1,38 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function AuthPage() {
-  const [mode, setMode] = useState('login')
-  const [name, setName]       = useState('')
-  const [email, setEmail]     = useState('')
+  const [mode, setMode]         = useState('login')
+  const [name, setName]         = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const { login, register, loading, error, setError } = useAuth()
+  const navigate = useNavigate()
 
-  const toggle = () => { setMode(m => m === 'login' ? 'register' : 'login'); setError('') }
+  const switchMode = (m) => { setMode(m); setError('') }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    let ok = false
     if (mode === 'login') {
-      await login(email, password)
+      ok = await login(email, password)
     } else {
       if (!name.trim()) { setError('Escribe tu nombre.'); return }
-      await register(name, email, password)
+      if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
+      ok = await register(name, email, password)
     }
+    if (ok) navigate('/', { replace: true })
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface-0">
       {/* Background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #22c55e 0%, transparent 70%)' }}/>
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}/>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-5" style={{ background: 'radial-gradient(circle, #22c55e 0%, transparent 60%)' }}/>
-        {/* Grid pattern */}
+        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #22c55e 0%, transparent 70%)' }}/>
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}/>
         <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -41,21 +46,23 @@ export default function AuthPage() {
       <div className="relative w-full max-w-md mx-4 animate-slide-up">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-brand-500/10 border border-brand-500/20 mb-4 glow-green-sm">
-            <span className="text-2xl font-display font-bold text-gradient">₮</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-brand-500/10 border border-brand-500/20 mb-4">
+            <span className="text-3xl">💰</span>
           </div>
           <h1 className="text-3xl font-display font-bold text-white">Finanzas</h1>
           <p className="text-white/40 mt-1 text-sm">Tu dinero, en control</p>
         </div>
 
         {/* Card */}
-        <div className="card border border-white/[0.06] animate-scale-in">
+        <div className="card border border-white/[0.06]">
           {/* Tabs */}
           <div className="flex bg-surface-2 rounded-2xl p-1 mb-6">
-            {['login','register'].map(m => (
-              <button key={m} onClick={() => { setMode(m); setError('') }}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${mode === m ? 'bg-brand-500 text-white shadow-sm' : 'text-white/40 hover:text-white/60'}`}>
-                {m === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+            {[['login','Iniciar sesión'],['register','Crear cuenta']].map(([m, label]) => (
+              <button key={m} onClick={() => switchMode(m)}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  mode === m ? 'bg-brand-500 text-white' : 'text-white/40 hover:text-white/60'
+                }`}>
+                {label}
               </button>
             ))}
           </div>
@@ -64,18 +71,21 @@ export default function AuthPage() {
             {mode === 'register' && (
               <div className="animate-slide-up">
                 <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Nombre</label>
-                <input className="input-dark" type="text" placeholder="Tu nombre" value={name} onChange={e => setName(e.target.value)} required />
+                <input className="input-dark" type="text" placeholder="Tu nombre completo"
+                  value={name} onChange={e => setName(e.target.value)} required />
               </div>
             )}
 
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Correo</label>
-              <input className="input-dark" type="email" placeholder="tu@correo.com" value={email} onChange={e => setEmail(e.target.value)} required />
+              <input className="input-dark" type="email" placeholder="tu@correo.com"
+                value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Contraseña</label>
-              <input className="input-dark" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+              <input className="input-dark" type="password" placeholder="••••••••"
+                value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
             </div>
 
             {error && (
@@ -85,7 +95,7 @@ export default function AuthPage() {
             )}
 
             <button type="submit" disabled={loading}
-              className="btn-primary w-full mt-2 flex items-center justify-center gap-2 glow-green-sm disabled:opacity-60 disabled:cursor-not-allowed">
+              className="btn-primary w-full mt-2 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
               {loading ? (
                 <>
                   <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -101,7 +111,7 @@ export default function AuthPage() {
           </form>
         </div>
 
-        <p className="text-center text-white/30 text-xs mt-6">
+        <p className="text-center text-white/25 text-xs mt-6">
           Tus datos se guardan localmente en tu dispositivo.
         </p>
       </div>
