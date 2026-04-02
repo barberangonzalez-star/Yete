@@ -18,6 +18,12 @@ const DEFAULT_TAGS = [
   { id: 'other',     name: 'Otro',         color: '#6b7280', icon: '📋' },
 ]
 
+const DEFAULT_ENTITIES = [
+  { id: 'personal', name: 'Personal',  emoji: '👤', color: '#22c55e', budget: {} },
+  { id: 'biz-1',    name: 'Negocio 1', emoji: '🚀', color: '#3b82f6', budget: {} },
+  { id: 'biz-2',    name: 'Negocio 2', emoji: '🛍️', color: '#f59e0b', budget: {} },
+]
+
 function load(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback }
   catch { return fallback }
@@ -27,26 +33,21 @@ function save(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
 }
 
-// Inicio del día en hora local (sin bug de UTC)
 function startOfLocalDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
 }
 
 export function FinanceProvider({ children }) {
-  const [entities, setEntities] = useState(() => load('entities', [
-    { id: 'personal', name: 'Personal',  emoji: '👤', color: '#22c55e', budget: {} },
-    { id: 'biz-1',    name: 'Negocio 1', emoji: '🚀', color: '#3b82f6', budget: {} },
-    { id: 'biz-2',    name: 'Negocio 2', emoji: '🛍️', color: '#f59e0b', budget: {} },
-  ]))
+  const [entities,       setEntities]       = useState(() => load('entities', DEFAULT_ENTITIES))
   const [activeEntityId, setActiveEntityId] = useState(() => load('activeEntityId', 'personal'))
-  const [transactions,   setTransactions]   = useState(() => load('transactions', []))
+  const [transactions,   setTransactions]   = useState(() => load('transactions', []))  // ← vacío por defecto
   const [tags,           setTags]           = useState(() => load('tags', DEFAULT_TAGS))
   const [period,         setPeriod]         = useState('month')
 
-  useEffect(() => { save('entities',     entities)      }, [entities])
+  useEffect(() => { save('entities',       entities)       }, [entities])
   useEffect(() => { save('activeEntityId', activeEntityId) }, [activeEntityId])
-  useEffect(() => { save('transactions', transactions)  }, [transactions])
-  useEffect(() => { save('tags',         tags)          }, [tags])
+  useEffect(() => { save('transactions',   transactions)   }, [transactions])
+  useEffect(() => { save('tags',           tags)           }, [tags])
 
   const activeEntity = entities.find(e => e.id === activeEntityId) || entities[0]
 
@@ -99,38 +100,25 @@ export function FinanceProvider({ children }) {
     const now = new Date()
     let from
 
-    if (p === 'day') {
-      from = startOfLocalDay(now)
-    } else if (p === 'week') {
-      const d = new Date(now)
-      d.setDate(d.getDate() - 7)
-      from = startOfLocalDay(d)
-    } else if (p === 'month') {
-      from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0)
-    } else if (p === 'year') {
-      from = new Date(now.getFullYear(), 0, 1, 0, 0, 0)
-    } else {
-      from = new Date(0)
-    }
+    if      (p === 'day')   { from = startOfLocalDay(now) }
+    else if (p === 'week')  { const d = new Date(now); d.setDate(d.getDate() - 7); from = startOfLocalDay(d) }
+    else if (p === 'month') { from = new Date(now.getFullYear(), now.getMonth(), 1) }
+    else if (p === 'year')  { from = new Date(now.getFullYear(), 0, 1) }
+    else                    { from = new Date(0) }
 
     const eid = entityId || activeEntityId
-
-    return transactions.filter(t => {
-      const txDate = new Date(t.date)
-      return t.entityId === eid && txDate >= from
-    })
+    return transactions.filter(t => t.entityId === eid && new Date(t.date) >= from)
   }, [transactions, period, activeEntityId])
 
   const getStats = useCallback((entityId) => {
     const txs     = getFilteredTransactions(entityId)
     const income  = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
     const expense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-    const balance = income - expense
     const byTag   = {}
     txs.filter(t => t.type === 'expense').forEach(t => {
       byTag[t.tagId] = (byTag[t.tagId] || 0) + t.amount
     })
-    return { income, expense, balance, byTag, count: txs.length }
+    return { income, expense, balance: income - expense, byTag, count: txs.length }
   }, [getFilteredTransactions])
 
   return (
